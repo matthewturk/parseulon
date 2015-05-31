@@ -1,0 +1,8 @@
+Hi there!  Parseulon is a very simple parser and "atlas" for SCI0 game
+resources.  It's not guaranteed to work, but might be able to do some neat
+things.
+
+Because it uses a python translation of the ScummVM LZW decompression algorithm
+for SCI0 games, it's licensed under the GPLv2+.
+
+-Matt, matthewturk@gmail.com
