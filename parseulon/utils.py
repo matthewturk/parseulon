@@ -25,22 +25,22 @@ def bits_to_int(bits):
     return ret
 
 resource_types = {
-    0: "View",
-    1: "Picture",
-    2: "Script",
-    3: "Text",
-    4: "Sound",
-    5: "Unused",
-    6: "Vocab",
-    7: "Font",
-    8: "Cursor",
-    9: "Patch",
+    0: "view",
+    1: "picture",
+    2: "script",
+    3: "text",
+    4: "sound",
+    5: "unused",
+    6: "vocab",
+    7: "font",
+    8: "cursor",
+    9: "patch",
 }
 
 r_dtype = np.dtype([("rtype", "i4"),
                     ("rnum", "i4"),
                     ("rfile", "i4"),
-                    ("roff", "i4")]
+                    ("roff", "i4")])
 
 def decompress_uncompressed(data, final_size):
     return data
