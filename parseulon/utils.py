@@ -1,5 +1,6 @@
 # Some utilities for parsing SCI0 resources
 
+import numpy as np
 import cStringIO
 from yt.utilities.lib.bitarray import bitarray
 
@@ -35,6 +36,11 @@ resource_types = {
     8: "Cursor",
     9: "Patch",
 }
+
+r_dtype = np.dtype([("rtype", "i4"),
+                    ("rnum", "i4"),
+                    ("rfile", "i4"),
+                    ("roff", "i4")]
 
 def decompress_uncompressed(data, final_size):
     return data
