@@ -38,14 +38,20 @@ class SCI0CellList(object):
         pointers = [i - offset for i in struct.unpack("<%sH" % n_cells,
                      data[4:4+2*n_cells])]
         pointers.append(len(data))
-        image_cells = []
+        self.image_cells = []
         for si, ei in zip(pointers[:-1], pointers[1:]):
-            image_cells.append(SCI0ImageCell(data[si:ei]))
+            self.image_cells.append(SCI0ImageCell(data[si:ei]))
 
 class SCI0ImageCell(object):
     def __init__(self, data):
         nx, ny, x_off, y_off, c_key = struct.unpack("<HHbbB", data[:7])
         draw_info = np.fromstring(data[7:], "<i1")
-        colors = (draw_info & get_high_bits(4, 8)) >> 4
-        repeats = (draw_info & get_low_bits(4))
-        
+        repeats = (draw_info & get_high_bits(4, 8)) >> 4
+        colors = (draw_info & get_low_bits(4))
+        im = np.zeros(nx*ny, dtype="uint8")
+        cur_pos = 0
+        for c, r in zip(colors, repeats):
+            if c != c_key:
+                im[cur_pos:cur_pos + r] = c
+            cur_pos += r
+        self.im = im.reshape((nx, ny), order="F").transpose()
