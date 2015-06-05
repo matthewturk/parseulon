@@ -59,6 +59,7 @@ class ResourceEntry(object):
         except NotImplementedError:
             self._data = None
 
+    @property
     def view(self):
         if resource_types[self.r_type] == "text":
             return self.data.tostring()
