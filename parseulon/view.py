@@ -1,6 +1,6 @@
 import numpy as np
 import struct
-from .utils import get_low_bits, get_high_bits
+from .utils import get_low_bits, get_high_bits, ega_palette
 
 class View(object):
     def __init__(self, data):
@@ -48,10 +48,20 @@ class SCI0ImageCell(object):
         draw_info = np.fromstring(data[7:], "<i1")
         repeats = (draw_info & get_high_bits(4, 8)) >> 4
         colors = (draw_info & get_low_bits(4))
-        im = np.zeros(nx*ny, dtype="uint8")
+        im_r = np.zeros(nx*ny, dtype="uint8")
+        im_g = np.zeros(nx*ny, dtype="uint8")
+        im_b = np.zeros(nx*ny, dtype="uint8")
+        im_a = np.zeros(nx*ny, dtype="uint8")
         cur_pos = 0
         for c, r in zip(colors, repeats):
-            if c != c_key:
-                im[cur_pos:cur_pos + r] = c
+            if c == c_key:
+                im_a[cur_pos:cur_pos + r] = 0
+            else:
+                im_r[cur_pos:cur_pos + r] = ega_palette[c][0]
+                im_g[cur_pos:cur_pos + r] = ega_palette[c][1]
+                im_b[cur_pos:cur_pos + r] = ega_palette[c][2]
+                im_a[cur_pos:cur_pos + r] = 255
             cur_pos += r
-        self.im = im.reshape((nx, ny), order="F").transpose()
+        self.im = np.array(
+            [im.reshape((nx, ny), order="F")
+             for im in (im_r, im_g, im_b, im_a)]).transpose()
