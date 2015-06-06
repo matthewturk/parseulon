@@ -1,5 +1,6 @@
 # Some utilities for parsing SCI0 resources
 
+import struct
 import numpy as np
 import cStringIO
 from yt.utilities.lib.bitarray import bitarray
@@ -91,7 +92,16 @@ def decompress_lzw(data, final_size):
     return dest
 
 def decompress_huffman(data, final_size):
-    raise NotImplementedError
+    # Get the number of nodes and the terminator signal
+    n_nodes, terminator = struct.unpack("<Bc", data[:2])
+    dt = np.dtype([ ("value", "c"), ("siblings", "<u1") ])
+    info = np.fromstring(data[2:2+n_nodes*2], dtype=dt)
+    nodes = np.empty(n_nodes, dtype = np.dtype([
+      ("value", "c"), ("left", "i1"), ("right", "i1")]))
+    nodes["value"] = info["value"]
+    nodes["left"] = (info["siblings"] & get_high_bits(4, 8)) >> 4
+    nodes["right"] = (info["siblings"] & get_low_bits(4))
+    sdata = data[2+n_nodes*2:]
 
 decomp_funcs = {0:decompress_uncompressed, 1:decompress_lzw, 2:decompress_huffman}
 
