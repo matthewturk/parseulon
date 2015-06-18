@@ -45,6 +45,8 @@ class SCI0CellList(object):
 class SCI0ImageCell(object):
     def __init__(self, data):
         nx, ny, x_off, y_off, c_key = struct.unpack("<HHbbB", data[:7])
+        self.x_off = x_off
+        self.y_off = y_off
         draw_info = np.fromstring(data[7:], "<i1")
         repeats = (draw_info & get_high_bits(4, 8)) >> 4
         colors = (draw_info & get_low_bits(4))
