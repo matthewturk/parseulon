@@ -22,10 +22,12 @@ class SCI0Font(Font):
 
     def _parse_char(self, ci, data):
         height, width = struct.unpack("<BB", data[:2])
-        ba = bitarray(size = len(data)*8)
-        ba.ibuf.view("c")[:] = data[2:]
-        bitmask = ba.as_bool_array()[:height*width]
-        self.char_bitmaps[ci] = bitmask.reshape((width, height))
+        bm_h = height
+        bm_w = int(np.ceil(width / 8.0) * 8)
+        ba = bitarray(size = bm_h*bm_w*8)
+        ba.ibuf.view("c")[:] = data[2:2+bm_h*bm_w]
+        bitmask = ba.as_bool_array().reshape((bm_w, 8*bm_h), order="F")
+        self.char_bitmaps[ci] = bitmask[:width,:height][::-1,:]
 
     def montage(self):
         w = sum(c.shape[0] + 1 for c in self.char_bitmaps.values())
