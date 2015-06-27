@@ -91,17 +91,55 @@ def decompress_lzw(data, final_size):
     if c != bits.size: print c, bits.size, bits.size - c
     return dest
 
+# http://sci.sierrahelp.com/Documentation/SCISpecifications/10-DecompressionAlgorithms.html#AEN990
+class HuffmanBitstream(object):
+    def __init__(self, data, final_size):
+        n_nodes, terminator = struct.unpack("<Bc", data[:2])
+        dt = np.dtype([ ("value", "c"), ("siblings", "<u1") ])
+        info = np.fromstring(data[2:2+n_nodes*2], dtype=dt)
+        self.nodes = np.empty(n_nodes, dtype = np.dtype([
+          ("value", "c"), ("left", "i1"), ("right", "i1")]))
+        self.nodes["value"] = info["value"]
+        self.nodes["left"] = (info["siblings"] & get_high_bits(4, 8)) >> 4
+        self.nodes["right"] = (info["siblings"] & get_low_bits(4))
+        self.data = np.fromstring(data[2+n_nodes*2:], dtype='uint8')
+        self.position = 0
+        self.bitstream = np.unpackbits(self.data)
+        self.output = np.zeros(final_size, dtype='uint8')
+    
+    def get_next_bit(self):
+        tr = self.bitstream[self.position]
+        self.position += 1
+        return tr
+
+    def get_next_byte(self):
+        tr = self.bitstream[self.position:self.position+8]
+        self.position += 8
+        return np.packbits(tr)[0]
+
+    def get_next_char(self, index):
+        node = self.nodes[index]
+        if node['left'] == node['right'] == 0:
+            return (node['value'], False)
+        if self.get_next_bit():
+            if node['right'] == 0:
+                return (self.get_next_byte(), True)
+            else:
+                return self.get_next_char(index + node['right'])
+        else:
+            return self.get_next_char(index + node['left'])
+
+    def decode(self):
+        o = self.output.view('c')
+        for i in range(self.output.size):
+            tr = self.get_next_char(0)[0]
+            o[i] = tr
+        return self.output.view('c')
+
 def decompress_huffman(data, final_size):
     # Get the number of nodes and the terminator signal
-    n_nodes, terminator = struct.unpack("<Bc", data[:2])
-    dt = np.dtype([ ("value", "c"), ("siblings", "<u1") ])
-    info = np.fromstring(data[2:2+n_nodes*2], dtype=dt)
-    nodes = np.empty(n_nodes, dtype = np.dtype([
-      ("value", "c"), ("left", "i1"), ("right", "i1")]))
-    nodes["value"] = info["value"]
-    nodes["left"] = (info["siblings"] & get_high_bits(4, 8)) >> 4
-    nodes["right"] = (info["siblings"] & get_low_bits(4))
-    sdata = data[2+n_nodes*2:]
+    hbs = HuffmanBitstream(data, final_size)
+    return hbs.decode()
 
 decomp_funcs = {0:decompress_uncompressed, 1:decompress_lzw, 2:decompress_huffman}
 
