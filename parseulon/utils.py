@@ -142,9 +142,14 @@ class HuffmanBitstream(object):
         while 1:
             tr = self.get_next_char()
             if tr == self.terminator: break
-            o[i] = tr
+            # I'm not totally sure how to make this all work together nicely,
+            # what with the bitstream and all that.  So, lots of views, I
+            # guess.
+            o[i] = tr.view('c')
             i += 1
-        #print self.bitstream.size - self.old_position
+        assert(i == o.size)
+        assert(self.bitstream.size - self.position < 8)
+        #import pdb;pdb.set_trace()
         return self.output.view('c')
 
 def decompress_huffman(data, final_size):

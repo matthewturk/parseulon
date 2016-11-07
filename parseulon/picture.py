@@ -36,6 +36,18 @@ opcode_names = {0xf0: 'PIC_OP_SET_COLOR',
                 0xfe: 'PIC_OP_OPX',
                 0xff: 'END_OPCODE'}
 
+ega_opcode_names = {
+    0: "PIC_OPX_EGA_SET_PALETTE_ENTRIES",
+    1: "PIC_OPX_EGA_SET_PALETTE",
+    2: "PIC_OPX_EGA_MONO0",
+    3: "PIC_OPX_EGA_MONO1",
+    4: "PIC_OPX_EGA_MONO2",
+    5: "PIC_OPX_EGA_MONO3",
+    6: "PIC_OPX_EGA_MONO4",
+    7: "PIC_OPX_EGA_EMBEDDED_VIEW",
+    8: "PIC_OPX_EGA_SET_PRIORITY_TABLE"
+}
+
 class StreamProcessor(object):
     def __init__(self, data):
         self.index = 0
@@ -198,7 +210,7 @@ class Picture(object):
             elif opcode == 0xfb:
                 # PIC_OP_SET_CONTROL
                 control = stream.get() & 0x0f
-                drawnenable |= DRAW_ENABLE_CONTROL
+                drawenable |= DRAW_ENABLE_CONTROL
             elif opcode == 0xfc:
                 # PIC_OP_DISABLE_CONTROL
                 drawenable &= ~DRAW_ENABLE_CONTROL
@@ -207,7 +219,7 @@ class Picture(object):
                 if pattern_code & PATTERN_FLAG_USE_PATTERN:
                     pattern_nr = (stream.get() >> 1) & 0x7f
                 oldx, oldy = self.get_abs_coordinates(stream)
-                self.draw_pattern(x, y, col1, col2, priority, control,
+                self.draw_pattern(oldx, oldy, col1, col2, priority, control,
                         drawenable,
                         pattern_code & PATTERN_FLAG_USE_PATTERN,
                         pattern_size, pattern_nr,
@@ -262,6 +274,9 @@ class Picture(object):
                     pass
                 elif temp == 0x08:
                     # PIC_OPX_SET_PRIORITY_TABLE
+                    for i in range(14):
+                        stream.get()
+                else:
                     pass
             elif opcode == 0xff:
                 break
