@@ -44,7 +44,7 @@ r_dtype = np.dtype([("rtype", "i4"),
                     ("roff", "i4")])
 
 def decompress_uncompressed(data, final_size):
-    return data
+    return np.fromstring(data, dtype="c")
 
 def decompress_lzw(data, final_size):
     # Python port of the ScummVM system, which is GPLv2+

@@ -39,7 +39,7 @@ opcode_names = {0xf0: 'PIC_OP_SET_COLOR',
 class StreamProcessor(object):
     def __init__(self, data):
         self.index = 0
-        self.data = data.view("uint8")
+        self.data = data.view("u1")
 
     def peek(self):
         return self.data[self.index]
@@ -90,6 +90,7 @@ class Picture(object):
         pattern_nr = 0
         pattern_code = 0
         pattern_size = 0
+        fill_in_black = 0
         # Now we get our new canvases
         for c in ("visual", "control", "priority", "aux"):
             self.canvases[c] = np.zeros(self.size, dtype="uint8")
@@ -97,9 +98,14 @@ class Picture(object):
 
         # We mandate a break later on, but a string overrun will also do it via
         # an exception.
+        n_unk = 0
+        n_tot = 0
+        opcodes = []
         while 1:
+            n_tot += 1
             opcode = stream.get()
-            print opcode_names.get(opcode, "UNKNOWN: %s" % (hex(opcode)))
+            opcodes.append((opcode, stream.index-1))
+            #print opcode_names.get(opcode, "UNKNOWN: %s" % (hex(opcode)))
             if opcode == 0xf0:
                 # PIC_OP_SET_COLOR
                 code = stream.get()
@@ -129,12 +135,12 @@ class Picture(object):
                 while stream.peek() < 0xf0:
                     if pattern_code & PATTERN_FLAG_USE_PATTERN:
                         pattern_nr = (stream.get() >> 1) & 0x7f
-                    x, y = self.get_rel_coordinates(x, y)
+                    x, y = self.get_rel_coordinates(x, y, stream)
                     self.draw_pattern(x, y, col1, col2, priority, control,
                             drawenable,
                             pattern_code & PATTERN_FLAG_USE_PATTERN,
                             pattern_size, pattern_nr,
-                            pattern_code & PATTERN_FLAG_RECTABLE)
+                            pattern_code & PATTERN_FLAG_RECTANGLE)
             elif opcode == 0xf5:
                 # PIC_OP_RELATIVE_MEDIUM_LINES
                 oldx, oldy = self.get_abs_coordinates(stream)
@@ -259,9 +265,9 @@ class Picture(object):
                     pass
             elif opcode == 0xff:
                 break
-
             else:
-                print "UNKNOWN OPCODE", hex(opcode)
+                n_unk += 1
+        return n_unk, n_tot
 
     def draw_pattern(self, *args, **kwargs):
         pass
