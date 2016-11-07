@@ -1,6 +1,7 @@
 from .utils import decomp_funcs, resource_types
 from .view import SCI0View
 from .font import SCI0Font
+from .picture import SCI0Picture
 import weakref
 import struct
 
@@ -68,6 +69,8 @@ class ResourceEntry(object):
             return SCI0View(self.data)
         elif resource_types[self.r_type] == "font":
             return SCI0Font(self.data)
+        elif resource_types[self.r_type] == "picture":
+            return SCI0Picture(self.data)
         else:
             raise NotImplementedError
 
