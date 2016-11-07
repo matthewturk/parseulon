@@ -94,46 +94,57 @@ def decompress_lzw(data, final_size):
 # http://sci.sierrahelp.com/Documentation/SCISpecifications/10-DecompressionAlgorithms.html#AEN990
 class HuffmanBitstream(object):
     def __init__(self, data, final_size):
-        n_nodes, terminator = struct.unpack("<Bc", data[:2])
+        n_nodes, self.terminator = struct.unpack("<BB", data[:2])
         dt = np.dtype([ ("value", "c"), ("siblings", "<u1") ])
         info = np.fromstring(data[2:2+n_nodes*2], dtype=dt)
         self.nodes = np.empty(n_nodes, dtype = np.dtype([
-          ("value", "c"), ("left", "i1"), ("right", "i1")]))
+          ("value", "c"), ("left", "u1"), ("right", "u1")]))
         self.nodes["value"] = info["value"]
         self.nodes["left"] = (info["siblings"] & get_high_bits(4, 8)) >> 4
         self.nodes["right"] = (info["siblings"] & get_low_bits(4))
         self.data = np.fromstring(data[2+n_nodes*2:], dtype='uint8')
-        self.position = 0
+        self.old_position = self.position = 0
         self.bitstream = np.unpackbits(self.data)
         self.output = np.zeros(final_size, dtype='uint8')
     
     def get_next_bit(self):
         tr = self.bitstream[self.position]
+        self.old_position = self.position
         self.position += 1
         return tr
 
     def get_next_byte(self):
         tr = self.bitstream[self.position:self.position+8]
+        self.old_position = self.position
         self.position += 8
-        return np.packbits(tr)[0]
+        tr = np.packbits(tr)
+        return tr[0]
 
-    def get_next_char(self, index):
+    def get_next_char(self):
+        index = 0
         node = self.nodes[index]
-        if node['left'] == node['right'] == 0:
-            return (node['value'], False)
-        if self.get_next_bit():
-            if node['right'] == 0:
-                return (self.get_next_byte(), True)
+        while 1:
+            if node['left'] == node['right'] == 0:
+                break
+            if self.get_next_bit():
+                next = node['right']
+                if next == 0:
+                    return self.get_next_byte()
             else:
-                return self.get_next_char(index + node['right'])
-        else:
-            return self.get_next_char(index + node['left'])
+                next = node['left']
+            index += next
+            node = self.nodes[index]
+        return node['value']
 
     def decode(self):
         o = self.output.view('c')
-        for i in range(self.output.size):
-            tr = self.get_next_char(0)[0]
+        i = 0
+        while 1:
+            tr = self.get_next_char()
+            if tr == self.terminator: break
             o[i] = tr
+            i += 1
+        #print self.bitstream.size - self.old_position
         return self.output.view('c')
 
 def decompress_huffman(data, final_size):
