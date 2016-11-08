@@ -53,6 +53,16 @@ class Sound(object):
                         data = self.eventstream[i:i+nb]))
             i += nb
 
+    def write_midi(self, fn):
+        pattern = midi.Pattern()
+        track = midi.Track()
+        pattern.append(track)
+        for e in self.events:
+            track.append(e)
+        eot = midi.EndOfTrackEvent(tick=1)
+        track.append(eot)
+        midi.write_midifile(fn, pattern)
+
 class SCI0Sound(Sound):
     def __init__(self, data):
         super(SCI0Sound, self).__init__(data)
