@@ -1,6 +1,8 @@
 import numpy as np
 import struct
 from .utils import ega_palette
+import matplotlib.pyplot as plt
+import matplotlib.patches as patches
 
 # Some magic numbers:
 DRAW_ENABLE_VISUAL   = 1
@@ -65,10 +67,11 @@ class StreamProcessor(object):
         self.index += n
 
 class Picture(object):
-    def __init__(self, data, size = (320, 200)):
+    def __init__(self, data, aspect = 320.0/200):
         self.data = data
-        self.size = size
-        self.canvases = {}
+        self.aspect = aspect
+        self.axes = {}
+        self.figures = {}
 
     def get_abs_coordinates(self, stream):
         coordinate_prefix = stream.get()
@@ -103,16 +106,18 @@ class Picture(object):
         pattern_code = 0
         pattern_size = 0
         fill_in_black = 0
-        # Now we get our new canvases
+        # Now we get our new axes
         for c in ("visual", "control", "priority", "aux"):
-            self.canvases[c] = np.zeros(self.size, dtype="uint8")
-        self.canvases["visual"][:] = 0xf
+            self.figures[c] = plt.figure(figsize = (10.0*self.aspect, 10.0))
+            self.axes[c] = self.figures[c].add_axes([0.0, 0.0, 1.0, 1.0])
+        #self.axes["visual"][:] = 0xf
 
         # We mandate a break later on, but a string overrun will also do it via
         # an exception.
         n_unk = 0
         n_tot = 0
         opcodes = []
+        bads = []
         while 1:
             n_tot += 1
             opcode = stream.get()
@@ -284,8 +289,36 @@ class Picture(object):
                 n_unk += 1
         return n_unk, n_tot
 
-    def draw_pattern(self, *args, **kwargs):
-        pass
+    def draw_pattern(self, x, y, col1, col2, priority, control, drawenable,
+            use_pattern, pattern_size, pattern_nr, rectangle = True):
+        to_draw = []
+        if drawenable & DRAW_ENABLE_VISUAL:
+            to_draw.append(self.axes["visual"])
+        if drawenable & DRAW_ENABLE_PRIORITY:
+            to_draw.append(self.axes["priority"])
+        if drawenable & DRAW_ENABLE_CONTROL:
+            to_draw.append(self.axes["control"])
+        print "Drawing on %s from %s to %s" % (len(to_draw), (x, y),
+                pattern_size)
+        for ax in to_draw:
+            # Alters (x,y) so that 0 <= (x - pattern_size), 319 >= (x +
+            # pattern_size), 189 >= (y + pattern_size) and 0 <= (y -
+            # pattern_size), then draws a rectangle or a circle filled with
+            # col1, col2, priority, control, as determined by drawenable.  If
+            # rectangle is not set, it will draw a rectangle, otherwise a
+            # circle of size pattern_size.  pattern_nr is used to specify the
+            # start index in the random bit table (256 random bits)
+            if rectangle:
+                patch = patches.Rectangle((x, y), pattern_size, pattern_size,
+                        alpha=0.3, color = 'k')
+            else:
+                patch = patches.Circle((x, y), pattern_size, alpha=0.3,
+                        color='k')
+            ax.add_patch(patch)
+
+    def save(self, fn):
+        for n, f in sorted(self.figures.items()):
+            f.savefig(fn + n + ".png")
 
     def dither_line(self, *args, **kwargs):
         pass

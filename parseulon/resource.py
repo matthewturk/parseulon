@@ -2,6 +2,7 @@ from .utils import decomp_funcs, resource_types
 from .view import SCI0View
 from .font import SCI0Font
 from .picture import SCI0Picture
+from .sound import SCI0Sound
 import weakref
 import struct
 
@@ -44,7 +45,7 @@ class ResourceEntry(object):
             self.load()
         return self._decompressed_size
 
-    def load(self):
+    def load(self, do=False):
         # Here we actually load up the data.
         f = self.resource_map.resource_files[self.file_id]
         f.seek(self.offset)
@@ -71,6 +72,8 @@ class ResourceEntry(object):
             return SCI0Font(self.data)
         elif resource_types[self.r_type] == "picture":
             return SCI0Picture(self.data)
+        elif resource_types[self.r_type] == "sound":
+            return SCI0Sound(self.data)
         else:
             raise NotImplementedError
 
