@@ -110,6 +110,8 @@ class Picture(object):
         for c in ("visual", "control", "priority", "aux"):
             self.figures[c] = plt.figure(figsize = (10.0*self.aspect, 10.0))
             self.axes[c] = self.figures[c].add_axes([0.0, 0.0, 1.0, 1.0])
+            self.axes[c].set_xlim(0, 320)
+            self.axes[c].set_ylim(0, 200)
         #self.axes["visual"][:] = 0xf
 
         # We mandate a break later on, but a string overrun will also do it via
@@ -199,8 +201,10 @@ class Picture(object):
                     c1, c2 = oldc1, oldc2
             elif opcode == 0xf9:
                 # PIC_OP_SET_PATTERN
-                pattern_code = stream.get() & 0x37
-                pattern_size = pattern_code & 0x7
+                #import pdb;pdb.set_trace()
+                pattern_code = stream.get() #& 0x37
+                pattern_size = pattern_code & 0x07
+                print "PATTERN CODE", pattern_code, pattern_size
             elif opcode == 0xfa:
                 # PIC_OP_ABSOLUTE_PATTERNS
                 while stream.peek() < 0xf0:
@@ -287,6 +291,7 @@ class Picture(object):
                 break
             else:
                 n_unk += 1
+                bads.append(opcode)
         return n_unk, n_tot
 
     def draw_pattern(self, x, y, col1, col2, priority, control, drawenable,
@@ -309,8 +314,10 @@ class Picture(object):
             # circle of size pattern_size.  pattern_nr is used to specify the
             # start index in the random bit table (256 random bits)
             if rectangle:
-                patch = patches.Rectangle((x, y), pattern_size, pattern_size,
-                        alpha=0.3, color = 'k')
+                patch = patches.Rectangle((x, y), 2*pattern_size+1,
+                        pattern_size*2+2,
+                        color = 'k')
+                print patch
             else:
                 patch = patches.Circle((x, y), pattern_size, alpha=0.3,
                         color='k')
