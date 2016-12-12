@@ -84,7 +84,7 @@ class Picture(object):
     def get_rel_coordinates(self, x, y, stream):
         input = stream.get()
         if input & 0x80:
-            x -= (input >> 4)
+            x -= (input >> 4) & 7
         else:
             x += (input >> 4)
         
@@ -94,9 +94,23 @@ class Picture(object):
             y += input & 0x7
         return (x,y)
 
+    def get_rel_coordinates_med(self, x, y, stream):
+        input = stream.get()
+        if input & 0x80:
+            y -= (input & 0x7F)
+        else:
+            y += input
+        input = stream.get()
+        if input & 0x80:
+            x -= (128 - (input & 0x7F))
+        else:
+            x += input 
+        return (x,y)
+
     def draw(self):
         # Set up a new stream
         stream = StreamProcessor(self.data)
+        palette = [default_palette.copy() for _ in range(4)]
         # Some default variables
         drawenable = DRAW_ENABLE_VISUAL | DRAW_ENABLE_PRIORITY
         priority = 0
@@ -111,7 +125,7 @@ class Picture(object):
             self.figures[c] = plt.figure(figsize = (10.0*self.aspect, 10.0))
             self.axes[c] = self.figures[c].add_axes([0.0, 0.0, 1.0, 1.0])
             self.axes[c].set_xlim(0, 320)
-            self.axes[c].set_ylim(0, 200)
+            self.axes[c].set_ylim(-200, 0)
         #self.axes["visual"][:] = 0xf
 
         # We mandate a break later on, but a string overrun will also do it via
@@ -129,6 +143,9 @@ class Picture(object):
                 # PIC_OP_SET_COLOR
                 code = stream.get()
                 #col1, col2 = palette[default_palette[int(code/40)]][code % 40]
+                col1, col2 = palette[int(code/40)][code % 40]
+                col1 = tuple(float(_)/255.0 for _ in ega_palette[col1]) + (1.0,)
+                col2 = tuple(float(_)/255.0 for _ in ega_palette[col2]) + (1.0,)
                 drawenable |= DRAW_ENABLE_VISUAL
             elif opcode == 0xf1:
                 # PIC_OP_DISABLE_VISUAL
@@ -164,12 +181,7 @@ class Picture(object):
                 # PIC_OP_RELATIVE_MEDIUM_LINES
                 oldx, oldy = self.get_abs_coordinates(stream)
                 while stream.peek() < 0xf0:
-                    temp = stream.get()
-                    if temp & 0x80:
-                        y = oldy - (temp & 0x7f)
-                    else:
-                        y = oldy + temp
-                    x = oldx + stream.get()
+                    x, y = self.get_rel_coordinates_med(oldx, oldy, stream)
                     self.dither_line(oldx, oldy, x, y, col1, col2, priority,
                             control, drawenable)
                     oldx, oldy = x, y
@@ -294,8 +306,7 @@ class Picture(object):
                 bads.append(opcode)
         return n_unk, n_tot
 
-    def draw_pattern(self, x, y, col1, col2, priority, control, drawenable,
-            use_pattern, pattern_size, pattern_nr, rectangle = True):
+    def _get_axes(self, drawenable):
         to_draw = []
         if drawenable & DRAW_ENABLE_VISUAL:
             to_draw.append(self.axes["visual"])
@@ -303,9 +314,18 @@ class Picture(object):
             to_draw.append(self.axes["priority"])
         if drawenable & DRAW_ENABLE_CONTROL:
             to_draw.append(self.axes["control"])
-        print "Drawing on %s from %s to %s" % (len(to_draw), (x, y),
-                pattern_size)
-        for ax in to_draw:
+        return to_draw
+
+    def draw_pattern(self, x, y, col1, col2, priority, control, drawenable,
+            use_pattern, pattern_size, pattern_nr, rectangle = True):
+        x -= pattern_size
+        y -= pattern_size
+        if y < 0: y = 0
+        if x < 0: x = 0
+        y = -y
+        # Rectangles in matplotlib start at bottom left, but in SCI we start at
+        # upper left.
+        for ax in self._get_axes(drawenable):
             # Alters (x,y) so that 0 <= (x - pattern_size), 319 >= (x +
             # pattern_size), 189 >= (y + pattern_size) and 0 <= (y -
             # pattern_size), then draws a rectangle or a circle filled with
@@ -314,21 +334,30 @@ class Picture(object):
             # circle of size pattern_size.  pattern_nr is used to specify the
             # start index in the random bit table (256 random bits)
             if rectangle:
-                patch = patches.Rectangle((x, y), 2*pattern_size+1,
-                        pattern_size*2+2,
-                        color = 'k')
-                print patch
+                # We offset down to bottom left
+                y -= 2*pattern_size + 1
+                patch = patches.Rectangle((x, y), 2*pattern_size+2,
+                        pattern_size*2+1,
+                        color = col1)
             else:
-                patch = patches.Circle((x, y), pattern_size, alpha=0.3,
-                        color='k')
+                x += pattern_size
+                y -= pattern_size
+                patch = patches.Circle((x, y), pattern_size,
+                        color=col1)
             ax.add_patch(patch)
 
     def save(self, fn):
         for n, f in sorted(self.figures.items()):
             f.savefig(fn + n + ".png")
 
-    def dither_line(self, *args, **kwargs):
-        pass
+    def dither_line(self, x0, y0, x1, y1, col1, col2, priority, control,
+                    drawenable):
+        y0 = -(y0+10)
+        y1 = -(y1+10)
+        for ax in self._get_axes(drawenable):
+            ax.plot([x0, x1], [y0, y1], color = col1, lw=2.0)
+            ax.plot([x0, x1], [y0, y1], color = col2, linestyle='--', lw=2.0)
+        
 
     def dither_fill(self, *args, **kwargs):
         pass
