@@ -2,7 +2,6 @@
 
 import struct
 import numpy as np
-import cStringIO
 from yt.utilities.lib.bitarray import bitarray
 
 def get_low_bits(nbits):
@@ -71,7 +70,7 @@ def decompress_lzw(data, final_size):
         else:
             if token > 0xff:
                 if token >= curtoken:
-                    print "ERROR!  Bad token", token
+                    print("ERROR!  Bad token", token)
                     break
                 tokenlastlength = tokenlengthlist[token] + 1
                 dest[d:d+tokenlastlength] = dest[tokenlist[token]:tokenlist[token]+tokenlastlength]
@@ -88,7 +87,8 @@ def decompress_lzw(data, final_size):
                 tokenlengthlist[curtoken] = tokenlastlength
                 curtoken += 1
     assert(d==dest.size)
-    if c != bits.size: print c, bits.size, bits.size - c
+    if c != bits.size:
+        print(c, bits.size, bits.size - c)
     return dest
 
 # http://sci.sierrahelp.com/Documentation/SCISpecifications/10-DecompressionAlgorithms.html#AEN990

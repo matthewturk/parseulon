@@ -216,7 +216,7 @@ class Picture(object):
                 #import pdb;pdb.set_trace()
                 pattern_code = stream.get() #& 0x37
                 pattern_size = pattern_code & 0x07
-                print "PATTERN CODE", pattern_code, pattern_size
+                print("PATTERN CODE", pattern_code, pattern_size)
             elif opcode == 0xfa:
                 # PIC_OP_ABSOLUTE_PATTERNS
                 while stream.peek() < 0xf0:

@@ -1,8 +1,10 @@
 import numpy as np
 import struct
-import midi
-
-Events = midi.events.EventRegistry.Events
+try:
+    import midi
+    Events = midi.events.EventRegistry.Events
+except ImportError:
+    pass
 
 status_codes = {
         0x80: ("NOTE_OFF", 2),
@@ -41,7 +43,7 @@ class Sound(object):
             if (self.eventstream[i] & 128):
                 e = self.eventstream[i]
                 if e == 0xfc:
-                    print i
+                    print(i)
                     break
                 channel = e & 0x0f
                 status = e & 0xf0
